@@ -82,7 +82,72 @@ document.getElementById('forgotPassword').onclick=async()=>{
   }
 };
 
-document.getElementById('authForm').onsubmit=async e=>{e.preventDefault();clearAuthMsg();const email=authEmail.value.trim();const password=authPassword.value;authSubmit.disabled=true;try{if(signupMode){const {data,error}=await sb.auth.signUp({email,password});if(error)throw error;if(data.session){await enterApp(data.user)}else setAuthMsg('Conta criada! Confira seu e-mail para confirmar a conta e depois faça login.','success')}else{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;await enterApp(data.user)}}catch(err){setAuthMsg(err.message||'Não foi possível concluir.')}finally{authSubmit.disabled=false}};
+document.getElementById('authForm').onsubmit=async e=>{
+  e.preventDefault();
+  clearAuthMsg();
+
+  const email=authEmail.value.trim();
+  const password=authPassword.value;
+
+  authSubmit.disabled=true;
+
+  try{
+    if(signupMode){
+
+      const {data,error}=await sb.auth.signUp({
+        email,
+        password
+      });
+
+      if(error) throw error;
+
+      if(data.session){
+        setAuthMsg('Conta criada com sucesso!','success');
+        await enterApp(data.user);
+      }else{
+        setAuthMsg('Conta criada com sucesso! Você já pode entrar.','success');
+      }
+
+    }else{
+
+      const {data,error}=await sb.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if(error){
+        if(error.message==='Invalid login credentials'){
+          throw new Error('E-mail ou senha incorretos.');
+        }
+
+        throw error;
+      }
+
+      await enterApp(data.user);
+    }
+
+  }catch(err){
+
+    let msg=err.message||'Não foi possível concluir.';
+
+    if(msg==='User already registered'){
+      msg='Este e-mail já está cadastrado.';
+    }
+
+    if(msg==='Email rate limit exceeded'){
+      msg='Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+    }
+
+    if(msg.includes('Password should be at least')){
+      msg='A senha deve ter pelo menos 6 caracteres.';
+    }
+
+    setAuthMsg(msg);
+
+  }finally{
+    authSubmit.disabled=false;
+  }
+};
 async function enterApp(user){currentUser=user;document.getElementById('auth').style.display='none';document.getElementById('app').style.display='flex';document.getElementById('userEmail').textContent=user.email||'';await loadTx();show('dashboard');}
 async function logout(){await sb.auth.signOut();currentUser=null;tx=[];document.getElementById('app').style.display='none';document.getElementById('auth').style.display='flex';authForm.reset();signupMode=false;updateAuthMode();}
 async function loadTx(){const {data,error}=await sb.from('lancamentos').select('*').order('data',{ascending:false}).order('created_at',{ascending:false});if(error){console.error(error);alert('Não foi possível carregar seus lançamentos.');return}tx=data||[];render();}
