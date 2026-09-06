@@ -157,9 +157,9 @@ document.getElementById('authForm').onsubmit=async e=>{
       msg='Muitas tentativas. Aguarde alguns minutos e tente novamente.';
     }
 if(
-     msg.toLowerCase().includes('email address') &&
-     msg.toLowerCase().includes('invalid')
-     ){
+  msg.toLowerCase().includes('email address') &&
+  msg.toLowerCase().includes('invalid')
+){
   msg='Digite um endereço de e-mail válido.';
 }
 
