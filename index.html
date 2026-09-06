@@ -128,20 +128,38 @@ document.getElementById('authForm').onsubmit=async e=>{
 
   }catch(err){
 
-    let msg=err.message||'Não foi possível concluir.';
+  const errorMessage = String(err?.message || '').toLowerCase();
 
-    if(msg==='User already registered'){
-      msg='Este e-mail já está cadastrado.';
-    }
+  if(
+    errorMessage.includes('email address') &&
+    errorMessage.includes('invalid')
+  ){
+    setAuthMsg('Digite um endereço de e-mail válido.');
+  }
+  else if(errorMessage.includes('user already registered')){
+    setAuthMsg('Este e-mail já está cadastrado.');
+  }
+  else if(errorMessage.includes('invalid login credentials')){
+    setAuthMsg('E-mail ou senha incorretos.');
+  }
+  else if(errorMessage.includes('email rate limit exceeded')){
+    setAuthMsg('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+  }
+  else{
+    setAuthMsg(err?.message || 'Não foi possível concluir.');
+  }
+
+}finally{
+  authSubmit.disabled=false;
+}
 
     if(msg==='Email rate limit exceeded'){
       msg='Muitas tentativas. Aguarde alguns minutos e tente novamente.';
     }
-
 if(
-  msg.toLowerCase().includes('email address') &&
-  msg.toLowerCase().includes('invalid')
-){
+     msg.toLowerCase().includes('email address') &&
+     msg.toLowerCase().includes('invalid')
+     ){
   msg='Digite um endereço de e-mail válido.';
 }
 
