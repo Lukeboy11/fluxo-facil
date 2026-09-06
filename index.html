@@ -116,6 +116,7 @@ document.getElementById('authForm').onsubmit=async e=>{
       });
 
       if(error){
+
         if(error.message==='Invalid login credentials'){
           throw new Error('E-mail ou senha incorretos.');
         }
@@ -128,46 +129,27 @@ document.getElementById('authForm').onsubmit=async e=>{
 
   }catch(err){
 
-  const errorMessage = String(err?.message || '').toLowerCase();
+    const msg=String(err?.message || '');
+    const lower=msg.toLowerCase();
 
-  if(
-    errorMessage.includes('email address') &&
-    errorMessage.includes('invalid')
-  ){
-    setAuthMsg('Digite um endereço de e-mail válido.');
-  }
-  else if(errorMessage.includes('user already registered')){
-    setAuthMsg('Este e-mail já está cadastrado.');
-  }
-  else if(errorMessage.includes('invalid login credentials')){
-    setAuthMsg('E-mail ou senha incorretos.');
-  }
-  else if(errorMessage.includes('email rate limit exceeded')){
-    setAuthMsg('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
-  }
-  else{
-    setAuthMsg(err?.message || 'Não foi possível concluir.');
-  }
-
-}finally{
-  authSubmit.disabled=false;
-}
-
-    if(msg==='Email rate limit exceeded'){
-      msg='Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+    if(lower.includes('invalid login credentials')){
+      setAuthMsg('E-mail ou senha incorretos.');
     }
-if(
-  msg.toLowerCase().includes('email address') &&
-  msg.toLowerCase().includes('invalid')
-){
-  msg='Digite um endereço de e-mail válido.';
-}
-
-    if(msg.includes('Password should be at least')){
-      msg='A senha deve ter pelo menos 6 caracteres.';
+    else if(lower.includes('user already registered')){
+      setAuthMsg('Este e-mail já está cadastrado.');
     }
-
-    setAuthMsg(msg);
+    else if(lower.includes('email rate limit exceeded')){
+      setAuthMsg('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+    }
+    else if(lower.includes('email address') && lower.includes('invalid')){
+      setAuthMsg('Digite um endereço de e-mail válido.');
+    }
+    else if(lower.includes('password should be at least')){
+      setAuthMsg('A senha deve ter pelo menos 6 caracteres.');
+    }
+    else{
+      setAuthMsg(msg || 'Não foi possível concluir.');
+    }
 
   }finally{
     authSubmit.disabled=false;
