@@ -29,6 +29,7 @@ form{display:grid;gap:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:1
       <div><label>E-mail<input id="authEmail" type="email" autocomplete="email" required placeholder="seu@email.com"></label></div>
       <div><label>Senha<input id="authPassword" type="password" minlength="6" autocomplete="current-password" required placeholder="Mínimo de 6 caracteres"></label></div>
       <button class="btn" id="authSubmit" type="submit">Entrar</button>
+      <button type="button" id="forgotPassword" class="link-btn">Esqueci minha senha</button>
     </form>
     <p style="margin-top:18px;font-size:13px;text-align:center"><span id="switchText">Ainda não tem conta?</span> <button class="switch" id="switchAuth" type="button">Criar conta</button></p>
   </div>
@@ -58,6 +59,29 @@ function setAuthMsg(text,type='error'){const el=document.getElementById('authMsg
 function clearAuthMsg(){const el=document.getElementById('authMsg');el.className='hidden';el.textContent='';}
 function updateAuthMode(){document.getElementById('authSubmit').textContent=signupMode?'Criar conta':'Entrar';document.getElementById('authSubtitle').textContent=signupMode?'Crie sua conta para salvar seus lançamentos na nuvem.':'Entre na sua conta para acessar seu financeiro.';document.getElementById('switchText').textContent=signupMode?'Já tem uma conta?':'Ainda não tem conta?';document.getElementById('switchAuth').textContent=signupMode?'Entrar':'Criar conta';document.getElementById('authPassword').autocomplete=signupMode?'new-password':'current-password';}
 document.getElementById('switchAuth').onclick=()=>{signupMode=!signupMode;clearAuthMsg();updateAuthMode()};
+document.getElementById('forgotPassword').onclick=async()=>{
+  const email=authEmail.value.trim();
+  if(!email){
+    setAuthMsg('Digite seu e-mail primeiro.');
+    authEmail.focus();
+    return;
+  }
+
+  clearAuthMsg();
+
+  try{
+    const {error}=await sb.auth.resetPasswordForEmail(email,{
+      redirectTo:'https://fluxo-facil-fluxoteam.vercel.app'
+    });
+
+    if(error) throw error;
+
+    setAuthMsg('Enviamos um link para redefinir sua senha no seu e-mail.','success');
+  }catch(err){
+    setAuthMsg(err.message||'Não foi possível enviar o e-mail.');
+  }
+};
+
 document.getElementById('authForm').onsubmit=async e=>{e.preventDefault();clearAuthMsg();const email=authEmail.value.trim();const password=authPassword.value;authSubmit.disabled=true;try{if(signupMode){const {data,error}=await sb.auth.signUp({email,password});if(error)throw error;if(data.session){await enterApp(data.user)}else setAuthMsg('Conta criada! Confira seu e-mail para confirmar a conta e depois faça login.','success')}else{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;await enterApp(data.user)}}catch(err){setAuthMsg(err.message||'Não foi possível concluir.')}finally{authSubmit.disabled=false}};
 async function enterApp(user){currentUser=user;document.getElementById('auth').style.display='none';document.getElementById('app').style.display='flex';document.getElementById('userEmail').textContent=user.email||'';await loadTx();show('dashboard');}
 async function logout(){await sb.auth.signOut();currentUser=null;tx=[];document.getElementById('app').style.display='none';document.getElementById('auth').style.display='flex';authForm.reset();signupMode=false;updateAuthMode();}
