@@ -60,6 +60,37 @@ form{display:grid;gap:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:1
   }
 }
 @media(max-width:520px){.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}.top{align-items:flex-start;gap:10px}.top .btn{padding:9px}.useremail{display:none}}
+@media(max-width:850px){
+  main{
+    width:calc(100vw - 64px);
+    max-width:none;
+    margin:0;
+    padding:18px;
+  }
+
+  main>section{
+    width:100%;
+    min-width:0;
+  }
+
+  main .panel,
+  main form,
+  main .grid,
+  main .row{
+    width:100%;
+    min-width:0;
+  }
+
+  main .grid{
+    grid-template-columns:1fr;
+  }
+
+  main input,
+  main select,
+  main textarea{
+    max-width:100%;
+  }
+}
 </style>
 </head>
 <body>
