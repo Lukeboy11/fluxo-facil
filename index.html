@@ -138,9 +138,13 @@ document.getElementById('authForm').onsubmit=async e=>{
       msg='Muitas tentativas. Aguarde alguns minutos e tente novamente.';
     }
 
-if(msg.toLowerCase().includes('email address') && msg.toLowerCase().includes('is invalid')){
+if(
+  msg.toLowerCase().includes('email address') &&
+  msg.toLowerCase().includes('invalid')
+){
   msg='Digite um endereço de e-mail válido.';
 }
+
     if(msg.includes('Password should be at least')){
       msg='A senha deve ter pelo menos 6 caracteres.';
     }
