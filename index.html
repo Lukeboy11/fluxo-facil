@@ -1,8 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fluxo Fácil — Financeiro para Autônomos</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#687386;--line:#e5e9f0;--primary:#2563eb;--danger:#dc2626;--success:#16a34a}
@@ -14,97 +13,64 @@ main{flex:1;padding:28px;max-width:1200px;margin:auto;width:100%}.top{display:fl
 .grid{display:grid;grid-template-columns:1.4fr .9fr;gap:16px;margin-top:16px}.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:18px}.panel h2{font-size:17px;margin:0 0 16px}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px}.empty{text-align:center;color:var(--muted);padding:30px}
 form{display:grid;gap:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{font-size:13px;font-weight:700}input,select,textarea{width:100%;padding:11px;border:1px solid #d8dee8;border-radius:9px;margin-top:5px;background:white}textarea{min-height:90px;resize:vertical}
-.ai{background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid #bfdbfe}.ai-result{white-space:pre-wrap;line-height:1.55;color:#334155}
-.hidden{display:none}.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.pill.in{background:#dcfce7;color:#166534}.pill.out{background:#fee2e2;color:#991b1b}
+.ai{background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid #bfdbfe}.ai-result{white-space:pre-wrap;line-height:1.55;color:#334155}.hidden{display:none}.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.pill.in{background:#dcfce7;color:#166534}.pill.out{background:#fee2e2;color:#991b1b}
+#auth{position:fixed;inset:0;background:rgba(15,23,42,.82);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}.auth-card{background:white;width:100%;max-width:420px;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.auth-card h1{margin:0 0 6px}.auth-card p{color:var(--muted);margin:0 0 20px}.auth-card .switch{background:none;border:0;color:var(--primary);cursor:pointer;font-weight:700}.error{color:#b91c1c;background:#fee2e2;padding:10px;border-radius:9px;font-size:13px}.success{color:#166534;background:#dcfce7;padding:10px;border-radius:9px;font-size:13px}.userbar{display:flex;align-items:center;gap:10px}.useremail{font-size:13px;color:var(--muted)}
 @media(max-width:850px){.side{width:70px}.brand{font-size:0}.brand span{font-size:20px}.nav button{font-size:0;text-align:center}.cards{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}main{padding:18px}}
-@media(max-width:520px){.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}.top{align-items:flex-start;gap:10px}.top .btn{padding:9px}}
+@media(max-width:520px){.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}.top{align-items:flex-start;gap:10px}.top .btn{padding:9px}.useremail{display:none}}
 </style>
 </head>
 <body>
-<div class="app">
-<aside class="side">
-  <div class="brand">Fluxo<span>Fácil</span></div>
-  <div class="nav">
-    <button class="active" onclick="show('dashboard',this)">📊 Dashboard</button>
-    <button onclick="show('lancamento',this)">➕ Lançamento</button>
-    <button onclick="show('transacoes',this)">🧾 Transações</button>
-    <button onclick="show('ia',this)">✨ Assistente IA</button>
+<div id="auth">
+  <div class="auth-card">
+    <h1>Fluxo<span style="color:#2563eb">Fácil</span></h1>
+    <p id="authSubtitle">Entre na sua conta para acessar seu financeiro.</p>
+    <div id="authMsg" class="hidden"></div>
+    <form id="authForm">
+      <div><label>E-mail<input id="authEmail" type="email" autocomplete="email" required placeholder="seu@email.com"></label></div>
+      <div><label>Senha<input id="authPassword" type="password" minlength="6" autocomplete="current-password" required placeholder="Mínimo de 6 caracteres"></label></div>
+      <button class="btn" id="authSubmit" type="submit">Entrar</button>
+    </form>
+    <p style="margin-top:18px;font-size:13px;text-align:center"><span id="switchText">Ainda não tem conta?</span> <button class="switch" id="switchAuth" type="button">Criar conta</button></p>
   </div>
-</aside>
-<main>
-<section id="dashboard">
-  <div class="top"><div><h1>Meu financeiro</h1><p>Controle simples para quem trabalha por conta própria.</p></div><button class="btn" onclick="show('lancamento')">+ Lançamento</button></div>
-  <div class="cards">
-    <div class="card"><div class="label">Saldo</div><div class="value" id="saldo">R$ 0,00</div></div>
-    <div class="card"><div class="label">Entradas</div><div class="value green" id="entradas">R$ 0,00</div></div>
-    <div class="card"><div class="label">Saídas</div><div class="value red" id="saidas">R$ 0,00</div></div>
-    <div class="card"><div class="label">Lançamentos</div><div class="value" id="qtd">0</div></div>
-  </div>
-  <div class="grid">
-    <div class="panel"><h2>Últimos lançamentos</h2><div id="recent"></div></div>
-    <div class="panel ai"><h2>✨ Resumo inteligente</h2><div id="insight" class="ai-result"></div></div>
-  </div>
-</section>
-
-<section id="lancamento" class="hidden">
-  <div class="top"><div><h1>Novo lançamento</h1><p>Registre uma entrada ou saída em poucos segundos.</p></div></div>
-  <div class="panel">
-  <form id="form">
-    <div class="row">
-      <div><label>Tipo<select id="tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label></div>
-      <div><label>Valor (R$)<input id="valor" type="number" step="0.01" min="0.01" required></label></div>
-    </div>
-    <div class="row">
-      <div><label>Descrição<input id="descricao" placeholder="Ex.: Serviço de pintura" required></label></div>
-      <div><label>Categoria<select id="categoria"><option>Serviço</option><option>Venda</option><option>Material</option><option>Transporte</option><option>Alimentação</option><option>Contas</option><option>Outros</option></select></label></div>
-    </div>
-    <div><label>Data<input id="data" type="date" required></label></div>
-    <button class="btn" type="submit">Salvar lançamento</button>
-  </form>
-  </div>
-</section>
-
-<section id="transacoes" class="hidden">
-  <div class="top"><div><h1>Transações</h1><p>Veja e organize tudo o que entrou e saiu.</p></div><button class="btn danger" onclick="clearAll()">Apagar tudo</button></div>
-  <div class="panel"><div id="all"></div></div>
-</section>
-
-<section id="ia" class="hidden">
-  <div class="top"><div><h1>✨ Assistente financeiro</h1><p>Uma análise simples dos seus números, sem complicação.</p></div></div>
-  <div class="grid">
-    <div class="panel ai">
-      <h2>O que você quer saber?</h2>
-      <form id="aiform">
-        <textarea id="pergunta" placeholder="Ex.: Posso gastar R$ 300 esta semana?"></textarea>
-        <button class="btn" type="submit">Analisar meus dados</button>
-      </form>
-    </div>
-    <div class="panel"><h2>Resposta</h2><div id="airesp" class="ai-result">Digite uma pergunta para receber uma análise.</div></div>
-  </div>
-</section>
-</main>
 </div>
+<div class="app" id="app" style="display:none">
+<aside class="side"><div class="brand">Fluxo<span>Fácil</span></div><div class="nav">
+<button class="active" onclick="show('dashboard',this)">📊 Dashboard</button><button onclick="show('lancamento',this)">➕ Lançamento</button><button onclick="show('transacoes',this)">🧾 Transações</button><button onclick="show('ia',this)">✨ Assistente IA</button>
+</div></aside>
+<main>
+<section id="dashboard"><div class="top"><div><h1>Meu financeiro</h1><p>Controle simples para quem trabalha por conta própria.</p></div><div class="userbar"><span class="useremail" id="userEmail"></span><button class="btn secondary" onclick="logout()">Sair</button><button class="btn" onclick="show('lancamento')">+ Lançamento</button></div></div>
+<div class="cards"><div class="card"><div class="label">Saldo</div><div class="value" id="saldo">R$ 0,00</div></div><div class="card"><div class="label">Entradas</div><div class="value green" id="entradas">R$ 0,00</div></div><div class="card"><div class="label">Saídas</div><div class="value red" id="saidas">R$ 0,00</div></div><div class="card"><div class="label">Lançamentos</div><div class="value" id="qtd">0</div></div></div>
+<div class="grid"><div class="panel"><h2>Últimos lançamentos</h2><div id="recent"></div></div><div class="panel ai"><h2>✨ Resumo inteligente</h2><div id="insight" class="ai-result"></div></div></div></section>
+<section id="lancamento" class="hidden"><div class="top"><div><h1>Novo lançamento</h1><p>Registre uma entrada ou saída em poucos segundos.</p></div></div><div class="panel"><form id="form"><div class="row"><div><label>Tipo<select id="tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label></div><div><label>Valor (R$)<input id="valor" type="number" step="0.01" min="0.01" required></label></div></div><div class="row"><div><label>Descrição<input id="descricao" placeholder="Ex.: Serviço de pintura" required></label></div><div><label>Categoria<select id="categoria"><option>Serviço</option><option>Venda</option><option>Material</option><option>Transporte</option><option>Alimentação</option><option>Contas</option><option>Outros</option></select></label></div></div><div><label>Data<input id="data" type="date" required></label></div><button class="btn" type="submit">Salvar lançamento</button></form></div></section>
+<section id="transacoes" class="hidden"><div class="top"><div><h1>Transações</h1><p>Veja e organize tudo o que entrou e saiu.</p></div><button class="btn danger" onclick="clearAll()">Apagar tudo</button></div><div class="panel"><div id="all"></div></div></section>
+<section id="ia" class="hidden"><div class="top"><div><h1>✨ Assistente financeiro</h1><p>Uma análise simples dos seus números, sem complicação.</p></div></div><div class="grid"><div class="panel ai"><h2>O que você quer saber?</h2><form id="aiform"><textarea id="pergunta" placeholder="Ex.: Posso gastar R$ 300 esta semana?"></textarea><button class="btn" type="submit">Analisar meus dados</button></form></div><div class="panel"><h2>Resposta</h2><div id="airesp" class="ai-result">Digite uma pergunta para receber uma análise.</div></div></div></section>
+</main></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const KEY='fluxofacil_v1';
-let tx=JSON.parse(localStorage.getItem(KEY)||'[]');
-const money=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-function save(){localStorage.setItem(KEY,JSON.stringify(tx));render();}
+// COLE AQUI os dois valores que você salvou no Bloco de Notas.
+const SUPABASE_URL = 'https://fxadxejmbdeahhkgzrpd.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Km5-OWLq7jW5n4TQguZ0zw_ZSZUW4Uu';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let tx=[]; let currentUser=null; let signupMode=false;
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+function setAuthMsg(text,type='error'){const el=document.getElementById('authMsg');el.className=type;el.textContent=text;}
+function clearAuthMsg(){const el=document.getElementById('authMsg');el.className='hidden';el.textContent='';}
+function updateAuthMode(){document.getElementById('authSubmit').textContent=signupMode?'Criar conta':'Entrar';document.getElementById('authSubtitle').textContent=signupMode?'Crie sua conta para salvar seus lançamentos na nuvem.':'Entre na sua conta para acessar seu financeiro.';document.getElementById('switchText').textContent=signupMode?'Já tem uma conta?':'Ainda não tem conta?';document.getElementById('switchAuth').textContent=signupMode?'Entrar':'Criar conta';document.getElementById('authPassword').autocomplete=signupMode?'new-password':'current-password';}
+document.getElementById('switchAuth').onclick=()=>{signupMode=!signupMode;clearAuthMsg();updateAuthMode()};
+document.getElementById('authForm').onsubmit=async e=>{e.preventDefault();clearAuthMsg();const email=authEmail.value.trim();const password=authPassword.value;authSubmit.disabled=true;try{if(signupMode){const {data,error}=await sb.auth.signUp({email,password});if(error)throw error;if(data.session){await enterApp(data.user)}else setAuthMsg('Conta criada! Confira seu e-mail para confirmar a conta e depois faça login.','success')}else{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;await enterApp(data.user)}}catch(err){setAuthMsg(err.message||'Não foi possível concluir.')}finally{authSubmit.disabled=false}};
+async function enterApp(user){currentUser=user;document.getElementById('auth').style.display='none';document.getElementById('app').style.display='flex';document.getElementById('userEmail').textContent=user.email||'';await loadTx();show('dashboard');}
+async function logout(){await sb.auth.signOut();currentUser=null;tx=[];document.getElementById('app').style.display='none';document.getElementById('auth').style.display='flex';authForm.reset();signupMode=false;updateAuthMode();}
+async function loadTx(){const {data,error}=await sb.from('lancamentos').select('*').order('data',{ascending:false}).order('created_at',{ascending:false});if(error){console.error(error);alert('Não foi possível carregar seus lançamentos.');return}tx=data||[];render();}
 function show(id,btn){document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');if(btn){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}render();}
-function totals(){let ent=tx.filter(x=>x.tipo==='entrada').reduce((a,x)=>a+x.valor,0);let sai=tx.filter(x=>x.tipo==='saida').reduce((a,x)=>a+x.valor,0);return {ent,sai,saldo:ent-sai}}
-function row(x,i){return `<tr><td>${new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR')}</td><td>${x.descricao}</td><td>${x.categoria}</td><td><span class="pill ${x.tipo==='entrada'?'in':'out'}">${x.tipo}</span></td><td class="${x.tipo==='entrada'?'green':'red'}">${x.tipo==='entrada'?'+':'-'} ${money(x.valor)}</td><td><button class="btn danger" style="padding:6px 9px" onclick="del(${i})">×</button></td></tr>`}
-function table(arr){if(!arr.length)return '<div class="empty">Nenhum lançamento ainda.</div>';return `<div style="overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${arr.map((x,i)=>row(x,i)).join('')}</tbody></table></div>`}
-function render(){
- let t=totals();document.getElementById('saldo').textContent=money(t.saldo);document.getElementById('entradas').textContent=money(t.ent);document.getElementById('saidas').textContent=money(t.sai);document.getElementById('qtd').textContent=tx.length;
- document.getElementById('recent').innerHTML=table(tx.slice().reverse().slice(0,6).map(x=>x));
- document.getElementById('all').innerHTML=table(tx.slice().reverse());
- let msg=tx.length?`Você tem ${tx.length} lançamento(s). Saldo atual: ${money(t.saldo)}.\n\n${t.saldo>=0?'Seu caixa está positivo. Continue registrando tudo para manter o controle.':'Atenção: suas saídas estão maiores que suas entradas. Revise os gastos.'}`:'Comece adicionando seu primeiro lançamento. Quanto mais você registrar, melhor será a análise.';
- document.getElementById('insight').textContent=msg;
-}
-function del(i){let rev=tx.slice().reverse();let target=rev[i];tx.splice(tx.indexOf(target),1);save()}
-function clearAll(){if(confirm('Apagar todos os lançamentos?')){tx=[];save()}}
-document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();tx.push({tipo:tipo.value,valor:Number(valor.value),descricao:descricao.value.trim(),categoria:categoria.value,data:data.value});e.target.reset();data.value=new Date().toISOString().slice(0,10);save();show('dashboard')});
+function totals(){let ent=tx.filter(x=>x.tipo==='entrada').reduce((a,x)=>a+Number(x.valor),0);let sai=tx.filter(x=>x.tipo==='saida').reduce((a,x)=>a+Number(x.valor),0);return {ent,sai,saldo:ent-sai}}
+function row(x){return `<tr><td>${new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR')}</td><td>${esc(x.descricao)}</td><td>${esc(x.categoria)}</td><td><span class="pill ${x.tipo==='entrada'?'in':'out'}">${x.tipo}</span></td><td class="${x.tipo==='entrada'?'green':'red'}">${x.tipo==='entrada'?'+':'-'} ${money(x.valor)}</td><td><button class="btn danger" style="padding:6px 9px" onclick="del('${x.id}')">×</button></td></tr>`}
+function table(arr){if(!arr.length)return '<div class="empty">Nenhum lançamento ainda.</div>';return `<div style="overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${arr.map(row).join('')}</tbody></table></div>`}
+function render(){let t=totals();document.getElementById('saldo').textContent=money(t.saldo);document.getElementById('entradas').textContent=money(t.ent);document.getElementById('saidas').textContent=money(t.sai);document.getElementById('qtd').textContent=tx.length;document.getElementById('recent').innerHTML=table(tx.slice(0,6));document.getElementById('all').innerHTML=table(tx);let msg=tx.length?`Você tem ${tx.length} lançamento(s). Saldo atual: ${money(t.saldo)}.\n\n${t.saldo>=0?'Seu caixa está positivo. Continue registrando tudo para manter o controle.':'Atenção: suas saídas estão maiores que suas entradas. Revise os gastos.'}`:'Comece adicionando seu primeiro lançamento. Quanto mais você registrar, melhor será a análise.';document.getElementById('insight').textContent=msg}
+async function del(id){if(!confirm('Excluir este lançamento?'))return;const {error}=await sb.from('lancamentos').delete().eq('id',id);if(error){alert(error.message);return}await loadTx()}
+async function clearAll(){if(!tx.length)return;if(!confirm('Apagar todos os seus lançamentos?'))return;const {error}=await sb.from('lancamentos').delete().eq('user_id',currentUser.id);if(error){alert(error.message);return}await loadTx()}
+document.getElementById('form').onsubmit=async e=>{e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;try{const payload={user_id:currentUser.id,tipo:tipo.value,valor:Number(valor.value),descricao:descricao.value.trim(),categoria:categoria.value,data:data.value};const {error}=await sb.from('lancamentos').insert(payload);if(error)throw error;e.target.reset();data.value=new Date().toISOString().slice(0,10);await loadTx();show('dashboard')}catch(err){alert(err.message||'Erro ao salvar lançamento.')}finally{btn.disabled=false}};
 data.value=new Date().toISOString().slice(0,10);
-document.getElementById('aiform').addEventListener('submit',e=>{e.preventDefault();let t=totals(),p=pergunta.value.toLowerCase();let resp=`Resumo:\n• Entradas: ${money(t.ent)}\n• Saídas: ${money(t.sai)}\n• Saldo: ${money(t.saldo)}\n\n`;if(!tx.length)resp+='Ainda não tenho dados suficientes. Registre algumas entradas e saídas primeiro.';else if(p.includes('gastar')||p.includes('posso')){resp+=t.saldo>0?`Pelo saldo registrado, você tem ${money(t.saldo)} disponíveis. Isso não é uma recomendação financeira: considere também contas futuras e uma reserva antes de gastar.`:'Seu saldo registrado não está positivo. Evite assumir novos gastos até revisar suas entradas e despesas.'}else{resp+=t.saldo>=0?'Seu fluxo atual está positivo. O próximo passo é identificar quais categorias mais consomem dinheiro e separar uma reserva.':'Seu fluxo atual está negativo. Priorize entender quais despesas podem ser reduzidas e aumentar ou antecipar entradas.'}airesp.textContent=resp});
-render();
-</script>
-</body></html>
+document.getElementById('aiform').onsubmit=e=>{e.preventDefault();let t=totals(),p=pergunta.value.toLowerCase();let resp=`Resumo:\n• Entradas: ${money(t.ent)}\n• Saídas: ${money(t.sai)}\n• Saldo: ${money(t.saldo)}\n\n`;if(!tx.length)resp+='Ainda não tenho dados suficientes. Registre algumas entradas e saídas primeiro.';else if(p.includes('gastar')||p.includes('posso')){resp+=t.saldo>0?`Pelo saldo registrado, você tem ${money(t.saldo)} disponíveis. Isso não é uma recomendação financeira: considere também contas futuras e uma reserva antes de gastar.`:'Seu saldo registrado não está positivo. Evite assumir novos gastos até revisar suas entradas e despesas.'}else{resp+=t.saldo>=0?'Seu fluxo atual está positivo. O próximo passo é identificar quais categorias mais consomem dinheiro e separar uma reserva.':'Seu fluxo atual está negativo. Priorize entender quais despesas podem ser reduzidas e aumentar ou antecipar entradas.'}airesp.textContent=resp};
+(async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp(session.user);})();
+</script></body></html>
