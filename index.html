@@ -130,7 +130,10 @@ form{display:grid;gap:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:1
 </div>
 <div class="app" id="app" style="display:none">
 <aside class="side"><div class="brand">Fluxo<span>Fácil</span></div><div class="nav">
-<button class="active" onclick="show('dashboard',this)">📊 Dashboard</button><button onclick="show('lancamento',this)">➕ Lançamento</button><button onclick="show('transacoes',this)">🧾 Transações</button><button onclick="show('ia',this)">✨ Assistente IA</button>
+<button class="active" onclick="show('dashboard',this)">📊 Dashboard</button>
+<button onclick="show('lancamento',this)">➕ Lançamento</button>
+<button onclick="show('transacoes',this)">🧾 Transações</button>
+<button onclick="show('ia',this)">✨ Assistente IA</button>
 </div></aside>
 <main>
 <section id="dashboard"><div class="top"><div><h1>Meu financeiro</h1><p>Controle simples para quem trabalha por conta própria.</p></div><div class="userbar"><span class="useremail" id="userEmail"></span><button class="btn secondary" onclick="logout()">Sair</button><button class="btn" onclick="show('lancamento')">+ Lançamento</button></div></div>
