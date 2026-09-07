@@ -427,6 +427,16 @@ if(!Number.isFinite(valorNumerico) || valorNumerico<=0){
   throw new Error('Digite um valor maior que zero.');
 }
 
+if(valorNumerico>100000000){
+  throw new Error('O valor máximo permitido é R$ 100.000.000,00.');
+}
+
+const dataInformada=new Date(data.value+'T12:00:00');
+
+if(Number.isNaN(dataInformada.getTime())){
+  throw new Error('Informe uma data válida.');
+}
+
 if(!descricaoLimpa){
   throw new Error('Digite uma descrição para o lançamento.');
 }
