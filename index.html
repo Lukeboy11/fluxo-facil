@@ -399,17 +399,6 @@ document.getElementById('form').onsubmit=async e=>{
     btn.disabled=false;
   }
 };
-    data.value=new Date().toISOString().slice(0,10);
-
-    await loadTx();
-    show('dashboard');
-
-  }catch(err){
-    alert(err.message||'Erro ao salvar lançamento.');
-  }finally{
-    btn.disabled=false;
-  }
-};
 data.value=new Date().toISOString().slice(0,10);
 document.getElementById('aiform').onsubmit=e=>{e.preventDefault();let t=totals(),p=pergunta.value.toLowerCase();let resp=`Resumo:\n• Entradas: ${money(t.ent)}\n• Saídas: ${money(t.sai)}\n• Saldo: ${money(t.saldo)}\n\n`;if(!tx.length)resp+='Ainda não tenho dados suficientes. Registre algumas entradas e saídas primeiro.';else if(p.includes('gastar')||p.includes('posso')){resp+=t.saldo>0?`Pelo saldo registrado, você tem ${money(t.saldo)} disponíveis. Isso não é uma recomendação financeira: considere também contas futuras e uma reserva antes de gastar.`:'Seu saldo registrado não está positivo. Evite assumir novos gastos até revisar suas entradas e despesas.'}else{resp+=t.saldo>=0?'Seu fluxo atual está positivo. O próximo passo é identificar quais categorias mais consomem dinheiro e separar uma reserva.':'Seu fluxo atual está negativo. Priorize entender quais despesas podem ser reduzidas e aumentar ou antecipar entradas.'}airesp.textContent=resp};
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp(session.user);})();
