@@ -153,6 +153,22 @@ function setAuthMsg(text,type='error'){const el=document.getElementById('authMsg
 function clearAuthMsg(){const el=document.getElementById('authMsg');el.className='hidden';el.textContent='';}
 function updateAuthMode(){document.getElementById('authSubmit').textContent=signupMode?'Criar conta':'Entrar';document.getElementById('authSubtitle').textContent=signupMode?'Crie sua conta para salvar seus lançamentos na nuvem.':'Entre na sua conta para acessar seu financeiro.';document.getElementById('switchText').textContent=signupMode?'Já tem uma conta?':'Ainda não tem conta?';document.getElementById('switchAuth').textContent=signupMode?'Entrar':'Criar conta';document.getElementById('authPassword').autocomplete=signupMode?'new-password':'current-password';}
 document.getElementById('switchAuth').onclick=()=>{signupMode=!signupMode;clearAuthMsg();updateAuthMode()};
+let recoveryMode=false;
+
+const showRecovery=()=>{
+  recoveryMode=true;
+  document.getElementById('authSubtitle').textContent='Digite sua nova senha.';
+  document.getElementById('authPassword').placeholder='Nova senha (mínimo 6 caracteres)';
+  document.getElementById('authSubmit').textContent='Salvar nova senha';
+  document.getElementById('forgotPassword').style.display='none';
+  document.getElementById('switchAuth').style.display='none';
+  document.getElementById('switchText').style.display='none';
+};
+
+if(window.location.hash.includes('type=recovery')){
+  showRecovery();
+}
+document.getElementById('authForm').onsubmit=async e=>{
 document.getElementById('forgotPassword').onclick=async()=>{
   const email=authEmail.value.trim();
   if(!email){
@@ -162,7 +178,40 @@ document.getElementById('forgotPassword').onclick=async()=>{
   }
 
   clearAuthMsg();
+if(recoveryMode){
+  const password=authPassword.value;
 
+  if(password.length<6){
+    setAuthMsg('A senha deve ter pelo menos 6 caracteres.');
+    return;
+  }
+
+  authSubmit.disabled=true;
+
+  try{
+    const {error}=await sb.auth.updateUser({
+      password
+    });
+
+    if(error) throw error;
+
+    recoveryMode=false;
+    setAuthMsg('Senha alterada com sucesso! Você já pode entrar.','success');
+    authPassword.value='';
+    authPassword.placeholder='Mínimo de 6 caracteres';
+    authSubmit.textContent='Entrar';
+    forgotPassword.style.display='';
+    switchAuth.style.display='';
+    switchText.style.display='';
+
+  }catch(err){
+    setAuthMsg(err.message||'Não foi possível alterar a senha.');
+  }finally{
+    authSubmit.disabled=false;
+  }
+
+  return;
+}
   try{
     const {error}=await sb.auth.resetPasswordForEmail(email,{
       redirectTo:'https://fluxo-facil-fluxoteam.vercel.app'
