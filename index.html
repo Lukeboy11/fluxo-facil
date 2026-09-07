@@ -152,7 +152,21 @@ form{display:grid;gap:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:1
 </div>
 </section>
 
-<section id="transacoes" class="hidden"><div class="top"><div><h1>Transações</h1><p>Veja e organize tudo o que entrou e saiu.</p></div><button class="btn danger" onclick="clearAll()">Apagar tudo</button></div><div class="panel"><div id="all"></div></div></section>
+<section id="transacoes" class="hidden"><div class="top">
+  <div>
+    <h1>Transações</h1>
+    <p>Veja e organize tudo o que entrou e saiu.</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <select id="filtroPeriodo" onchange="filtrarTransacoes()" style="width:auto;margin:0">
+      <option value="todos">Todos os períodos</option>
+      <option value="mes">Este mês</option>
+      <option value="30">Últimos 30 dias</option>
+      <option value="90">Últimos 90 dias</option>
+    </select>
+    <button class="btn danger" onclick="clearAll()">Apagar tudo</button>
+  </div>
+</div><div class="panel"><div id="all"></div></div></section>
 <section id="ia" class="hidden"><div class="top"><div><h1>✨ Assistente financeiro</h1><p>Uma análise simples dos seus números, sem complicação.</p></div></div><div class="grid"><div class="panel ai"><h2>O que você quer saber?</h2><form id="aiform"><textarea id="pergunta" placeholder="Ex.: Posso gastar R$ 300 esta semana?"></textarea><button class="btn" type="submit">Analisar meus dados</button></form></div><div class="panel"><h2>Resposta</h2><div id="airesp" class="ai-result">Digite uma pergunta para receber uma análise.</div></div></div></section>
 </main></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
