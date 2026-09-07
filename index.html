@@ -314,7 +314,46 @@ function table(arr){if(!arr.length)return '<div class="empty">Nenhum lançamento
 function render(){let t=totals();document.getElementById('saldo').textContent=money(t.saldo);document.getElementById('entradas').textContent=money(t.ent);document.getElementById('saidas').textContent=money(t.sai);document.getElementById('qtd').textContent=tx.length;document.getElementById('recent').innerHTML=table(tx.slice(0,6));document.getElementById('all').innerHTML=table(tx);let msg=tx.length?`Você tem ${tx.length} lançamento(s). Saldo atual: ${money(t.saldo)}.\n\n${t.saldo>=0?'Seu caixa está positivo. Continue registrando tudo para manter o controle.':'Atenção: suas saídas estão maiores que suas entradas. Revise os gastos.'}`:'Comece adicionando seu primeiro lançamento. Quanto mais você registrar, melhor será a análise.';document.getElementById('insight').textContent=msg}
 async function del(id){if(!confirm('Excluir este lançamento?'))return;const {error}=await sb.from('lancamentos').delete().eq('id',id);if(error){alert(error.message);return}await loadTx()}
 async function clearAll(){if(!tx.length)return;if(!confirm('Apagar todos os seus lançamentos?'))return;const {error}=await sb.from('lancamentos').delete().eq('user_id',currentUser.id);if(error){alert(error.message);return}await loadTx()}
-document.getElementById('form').onsubmit=async e=>{e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;try{const payload={user_id:currentUser.id,tipo:tipo.value,valor:Number(valor.value),descricao:descricao.value.trim(),categoria:categoria.value,data:data.value};const {error}=await sb.from('lancamentos').insert(payload);if(error)throw error;e.target.reset();data.value=new Date().toISOString().slice(0,10);await loadTx();show('dashboard')}catch(err){alert(err.message||'Erro ao salvar lançamento.')}finally{btn.disabled=false}};
+document.getElementById('form').onsubmit=async e=>{
+  e.preventDefault();
+
+  if(!currentUser){
+    alert('Sua sessão expirou. Entre novamente para continuar.');
+    await logout();
+    return;
+  }
+
+  const btn=e.target.querySelector('button');
+  btn.disabled=true;
+
+  try{
+    const payload={
+      user_id:currentUser.id,
+      tipo:tipo.value,
+      valor:Number(valor.value),
+      descricao:descricao.value.trim(),
+      categoria:categoria.value,
+      data:data.value
+    };
+
+    const {error}=await sb
+      .from('lancamentos')
+      .insert(payload);
+
+    if(error) throw error;
+
+    e.target.reset();
+    data.value=new Date().toISOString().slice(0,10);
+
+    await loadTx();
+    show('dashboard');
+
+  }catch(err){
+    alert(err.message||'Erro ao salvar lançamento.');
+  }finally{
+    btn.disabled=false;
+  }
+};
 data.value=new Date().toISOString().slice(0,10);
 document.getElementById('aiform').onsubmit=e=>{e.preventDefault();let t=totals(),p=pergunta.value.toLowerCase();let resp=`Resumo:\n• Entradas: ${money(t.ent)}\n• Saídas: ${money(t.sai)}\n• Saldo: ${money(t.saldo)}\n\n`;if(!tx.length)resp+='Ainda não tenho dados suficientes. Registre algumas entradas e saídas primeiro.';else if(p.includes('gastar')||p.includes('posso')){resp+=t.saldo>0?`Pelo saldo registrado, você tem ${money(t.saldo)} disponíveis. Isso não é uma recomendação financeira: considere também contas futuras e uma reserva antes de gastar.`:'Seu saldo registrado não está positivo. Evite assumir novos gastos até revisar suas entradas e despesas.'}else{resp+=t.saldo>=0?'Seu fluxo atual está positivo. O próximo passo é identificar quais categorias mais consomem dinheiro e separar uma reserva.':'Seu fluxo atual está negativo. Priorize entender quais despesas podem ser reduzidas e aumentar ou antecipar entradas.'}airesp.textContent=resp};
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp(session.user);})();
