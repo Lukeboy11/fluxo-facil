@@ -168,9 +168,9 @@ const showRecovery=()=>{
 if(window.location.hash.includes('type=recovery')){
   showRecovery();
 }
-document.getElementById('authForm').onsubmit=async e=>{
 document.getElementById('forgotPassword').onclick=async()=>{
   const email=authEmail.value.trim();
+
   if(!email){
     setAuthMsg('Digite seu e-mail primeiro.');
     authEmail.focus();
@@ -179,40 +179,6 @@ document.getElementById('forgotPassword').onclick=async()=>{
 
   clearAuthMsg();
 
-  if(recoveryMode){
-  const password=authPassword.value;
-
-  if(password.length<6){
-    setAuthMsg('A senha deve ter pelo menos 6 caracteres.');
-    return;
-  }
-
-  authSubmit.disabled=true;
-
-  try{
-    const {error}=await sb.auth.updateUser({
-      password
-    });
-
-    if(error) throw error;
-
-    recoveryMode=false;
-    setAuthMsg('Senha alterada com sucesso! Você já pode entrar.','success');
-    authPassword.value='';
-    authPassword.placeholder='Mínimo de 6 caracteres';
-    authSubmit.textContent='Entrar';
-    forgotPassword.style.display='';
-    switchAuth.style.display='';
-    switchText.style.display='';
-
-  }catch(err){
-    setAuthMsg(err.message||'Não foi possível alterar a senha.');
-  }finally{
-    authSubmit.disabled=false;
-  }
-
-  return;
-}
   try{
     const {error}=await sb.auth.resetPasswordForEmail(email,{
       redirectTo:'https://fluxo-facil-fluxoteam.vercel.app'
@@ -229,6 +195,43 @@ document.getElementById('forgotPassword').onclick=async()=>{
 document.getElementById('authForm').onsubmit=async e=>{
   e.preventDefault();
   clearAuthMsg();
+
+  if(recoveryMode){
+    const password=authPassword.value;
+
+    if(password.length<6){
+      setAuthMsg('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    authSubmit.disabled=true;
+
+    try{
+      const {error}=await sb.auth.updateUser({
+        password
+      });
+
+      if(error) throw error;
+
+      recoveryMode=false;
+      setAuthMsg('Senha alterada com sucesso! Você já pode entrar.','success');
+
+      authPassword.value='';
+      authPassword.placeholder='Mínimo de 6 caracteres';
+      authSubmit.textContent='Entrar';
+
+      forgotPassword.style.display='';
+      switchAuth.style.display='';
+      switchText.style.display='';
+
+    }catch(err){
+      setAuthMsg(err.message||'Não foi possível alterar a senha.');
+    }finally{
+      authSubmit.disabled=false;
+    }
+
+    return;
+  }
 
   const email=authEmail.value.trim();
   const password=authPassword.value;
