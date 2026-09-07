@@ -178,7 +178,8 @@ document.getElementById('forgotPassword').onclick=async()=>{
   }
 
   clearAuthMsg();
-if(recoveryMode){
+
+  if(recoveryMode){
   const password=authPassword.value;
 
   if(password.length<6){
