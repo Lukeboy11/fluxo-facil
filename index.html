@@ -399,14 +399,37 @@ document.getElementById('form').onsubmit=async e=>{
   btn.disabled=true;
 
   try{
-    const payload={
-      user_id:currentUser.id,
-      tipo:tipo.value,
-      valor:Number(valor.value),
-      descricao:descricao.value.trim(),
-      categoria:categoria.value,
-      data:data.value
-    };
+    const valorNumerico=Number(valor.value);
+const descricaoLimpa=descricao.value.trim();
+
+if(!['entrada','saida'].includes(tipo.value)){
+  throw new Error('Selecione um tipo de lançamento válido.');
+}
+
+if(!Number.isFinite(valorNumerico) || valorNumerico<=0){
+  throw new Error('Digite um valor maior que zero.');
+}
+
+if(!descricaoLimpa){
+  throw new Error('Digite uma descrição para o lançamento.');
+}
+
+if(!categoria.value){
+  throw new Error('Selecione uma categoria.');
+}
+
+if(!data.value){
+  throw new Error('Informe a data do lançamento.');
+}
+
+const payload={
+  user_id:currentUser.id,
+  tipo:tipo.value,
+  valor:valorNumerico,
+  descricao:descricaoLimpa,
+  categoria:categoria.value,
+  data:data.value
+};
 
     let error;
 
