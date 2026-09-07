@@ -146,7 +146,7 @@ form{display:grid;gap:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:1
 const SUPABASE_URL = 'https://fxadxejmbdeahhkgzrpd.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Km5-OWLq7jW5n4TQguZ0zw_ZSZUW4Uu';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-let tx=[]; let currentUser=null; let signupMode=false;
+let tx=[]; let currentUser=null; let signupMode=false; let editingId=null;
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 function setAuthMsg(text,type='error'){const el=document.getElementById('authMsg');el.className=type;el.textContent=text;}
@@ -309,9 +309,38 @@ async function logout(){await sb.auth.signOut();currentUser=null;tx=[];document.
 async function loadTx(){const {data,error}=await sb.from('lancamentos').select('*').order('data',{ascending:false}).order('created_at',{ascending:false});if(error){console.error(error);alert('Não foi possível carregar seus lançamentos.');return}tx=data||[];render();}
 function show(id,btn){document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');if(btn){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}render();}
 function totals(){let ent=tx.filter(x=>x.tipo==='entrada').reduce((a,x)=>a+Number(x.valor),0);let sai=tx.filter(x=>x.tipo==='saida').reduce((a,x)=>a+Number(x.valor),0);return {ent,sai,saldo:ent-sai}}
-function row(x){return `<tr><td>${new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR')}</td><td>${esc(x.descricao)}</td><td>${esc(x.categoria)}</td><td><span class="pill ${x.tipo==='entrada'?'in':'out'}">${x.tipo}</span></td><td class="${x.tipo==='entrada'?'green':'red'}">${x.tipo==='entrada'?'+':'-'} ${money(x.valor)}</td><td><button class="btn danger" style="padding:6px 9px" onclick="del('${x.id}')">×</button></td></tr>`}
+function row(x){
+  return `<tr>
+    <td>${new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR')}</td>
+    <td>${esc(x.descricao)}</td>
+    <td>${esc(x.categoria)}</td>
+    <td><span class="pill ${x.tipo==='entrada'?'in':'out'}">${x.tipo}</span></td>
+    <td class="${x.tipo==='entrada'?'green':'red'}">${x.tipo==='entrada'?'+':'-'} ${money(x.valor)}</td>
+    <td>
+      <button class="btn secondary" style="padding:6px 9px;margin-right:5px" onclick="editar('${x.id}')">Editar</button>
+      <button class="btn danger" style="padding:6px 9px" onclick="del('${x.id}')">×</button>
+    </td>
+  </tr>`
+}
 function table(arr){if(!arr.length)return '<div class="empty">Nenhum lançamento ainda.</div>';return `<div style="overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${arr.map(row).join('')}</tbody></table></div>`}
 function render(){let t=totals();document.getElementById('saldo').textContent=money(t.saldo);document.getElementById('entradas').textContent=money(t.ent);document.getElementById('saidas').textContent=money(t.sai);document.getElementById('qtd').textContent=tx.length;document.getElementById('recent').innerHTML=table(tx.slice(0,6));document.getElementById('all').innerHTML=table(tx);let msg=tx.length?`Você tem ${tx.length} lançamento(s). Saldo atual: ${money(t.saldo)}.\n\n${t.saldo>=0?'Seu caixa está positivo. Continue registrando tudo para manter o controle.':'Atenção: suas saídas estão maiores que suas entradas. Revise os gastos.'}`:'Comece adicionando seu primeiro lançamento. Quanto mais você registrar, melhor será a análise.';document.getElementById('insight').textContent=msg}
+function editar(id){
+  const item=tx.find(x=>x.id===id);
+
+  if(!item) return;
+
+  editingId=id;
+
+  tipo.value=item.tipo;
+  valor.value=item.valor;
+  descricao.value=item.descricao;
+  categoria.value=item.categoria;
+  data.value=item.data;
+
+  document.querySelector('#form button[type="submit"]').textContent='Atualizar lançamento';
+
+  show('lancamento');
+}
 async function del(id){if(!confirm('Excluir este lançamento?'))return;const {error}=await sb.from('lancamentos').delete().eq('id',id);if(error){alert(error.message);return}await loadTx()}
 async function clearAll(){if(!tx.length)return;if(!confirm('Apagar todos os seus lançamentos?'))return;const {error}=await sb.from('lancamentos').delete().eq('user_id',currentUser.id);if(error){alert(error.message);return}await loadTx()}
 document.getElementById('form').onsubmit=async e=>{
@@ -336,13 +365,40 @@ document.getElementById('form').onsubmit=async e=>{
       data:data.value
     };
 
-    const {error}=await sb
-      .from('lancamentos')
-      .insert(payload);
+    let error;
+
+    if(editingId){
+      const result=await sb
+        .from('lancamentos')
+        .update(payload)
+        .eq('id',editingId)
+        .eq('user_id',currentUser.id);
+
+      error=result.error;
+    }else{
+      const result=await sb
+        .from('lancamentos')
+        .insert(payload);
+
+      error=result.error;
+    }
 
     if(error) throw error;
 
+    editingId=null;
     e.target.reset();
+    data.value=new Date().toISOString().slice(0,10);
+    btn.textContent='Salvar lançamento';
+
+    await loadTx();
+    show('dashboard');
+
+  }catch(err){
+    alert(err.message||'Erro ao salvar lançamento.');
+  }finally{
+    btn.disabled=false;
+  }
+};
     data.value=new Date().toISOString().slice(0,10);
 
     await loadTx();
