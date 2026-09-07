@@ -172,9 +172,26 @@ const showRecovery=()=>{
   document.getElementById('switchText').style.display='none';
 };
 
-sb.auth.onAuthStateChange((event)=>{
+sb.auth.onAuthStateChange(async (event, session)=>{
   if(event==='PASSWORD_RECOVERY'){
     showRecovery();
+    return;
+  }
+
+  if(event==='SIGNED_OUT'){
+    currentUser=null;
+    tx=[];
+    editingId=null;
+    document.getElementById('app').style.display='none';
+    document.getElementById('auth').style.display='flex';
+    authForm.reset();
+    signupMode=false;
+    recoveryMode=false;
+    updateAuthMode();
+  }
+
+  if(event==='SIGNED_IN' && session?.user && !currentUser){
+    await enterApp(session.user);
   }
 });
 document.getElementById('forgotPassword').onclick=async()=>{
