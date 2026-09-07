@@ -1,70 +1,227 @@
-// api/kiwify-webhook.js
+const crypto = require("crypto");
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const KIWIFY_WEBHOOK_TOKEN = process.env.KIWIFY_WEBHOOK_TOKEN;
 
-const KIWIFY_WEBHOOK_TOKEN =
-  process.env.KIWIFY_WEBHOOK_TOKEN;
-
-
-// ============================================================
-// RESPOSTA JSON
-// ============================================================
-
-function response(res, status, body) {
-  return res.status(status).json(body);
+function send(res, status, data) {
+  return res.status(status).json(data);
 }
 
+function safeEqual(a, b) {
+  if (!a || !b) return false;
 
-// ============================================================
-// NORMALIZAR E-MAIL
-// ============================================================
+  const aBuf = Buffer.from(String(a));
+  const bBuf = Buffer.from(String(b));
+
+  if (aBuf.length !== bBuf.length) return false;
+
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+/**
+ * A Kiwify usa um token configurado no webhook.
+ *
+ * Algumas integrações/versões entregam a assinatura:
+ * - como ?signature=...
+ * - no header X-Kiwify-Signature
+ *
+ * Também aceitamos o token diretamente em headers comuns
+ * para facilitar compatibilidade com diferentes formatos de entrega.
+ */
+function validateKiwifyRequest(req, rawBody) {
+  if (!KIWIFY_WEBHOOK_TOKEN) {
+    console.error("KIWIFY_WEBHOOK_TOKEN não configurado.");
+    return false;
+  }
+
+  const signature =
+    req.query?.signature ||
+    req.headers["x-kiwify-signature"] ||
+    req.headers["x-kiwify-token"] ||
+    req.headers["x-webhook-token"];
+
+  if (!signature) {
+    console.error("Assinatura/token da Kiwify não encontrado.");
+    return false;
+  }
+
+  const received = String(signature).trim();
+
+  // Caso a Kiwify entregue o próprio token.
+  if (safeEqual(received, KIWIFY_WEBHOOK_TOKEN)) {
+    return true;
+  }
+
+  // Caso entregue HMAC-SHA1 do corpo usando o token como segredo.
+  const expected = crypto
+    .createHmac("sha1", KIWIFY_WEBHOOK_TOKEN)
+    .update(rawBody, "utf8")
+    .digest("hex");
+
+  const expectedWithPrefix = `sha1=${expected}`;
+
+  return (
+    safeEqual(received, expected) ||
+    safeEqual(received, expectedWithPrefix)
+  );
+}
 
 function normalizeEmail(email) {
-  if (!email || typeof email !== "string") {
+  if (!email) return null;
+
+  const normalized = String(email).trim().toLowerCase();
+
+  if (!normalized || !normalized.includes("@")) {
     return null;
   }
 
-  return email.trim().toLowerCase();
+  return normalized;
 }
 
+function getEventType(body) {
+  return String(
+    body?.webhook_event_type ||
+      body?.event_type ||
+      body?.event ||
+      body?.type ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+}
 
-// ============================================================
-// SUPABASE REST API
-// ============================================================
+function getCustomer(body) {
+  return body?.Customer || body?.customer || {};
+}
+
+function getProduct(body) {
+  return body?.Product || body?.product || {};
+}
+
+function getEmail(body) {
+  const customer = getCustomer(body);
+
+  return normalizeEmail(
+    customer.email ||
+      customer.email_address ||
+      body?.email ||
+      body?.customer_email
+  );
+}
+
+function getCustomerName(body) {
+  const customer = getCustomer(body);
+
+  return (
+    customer.full_name ||
+    customer.name ||
+    customer.first_name ||
+    body?.customer_name ||
+    null
+  );
+}
+
+function getProductId(body) {
+  const product = getProduct(body);
+
+  return (
+    product.product_id ||
+    product.id ||
+    product.pid ||
+    body?.product_id ||
+    null
+  );
+}
+
+function getProductName(body) {
+  const product = getProduct(body);
+
+  return (
+    product.product_name ||
+    product.name ||
+    body?.product_name ||
+    null
+  );
+}
+
+function getOrderId(body) {
+  return (
+    body?.order_id ||
+    body?.orderId ||
+    body?.order_number ||
+    body?.transaction_id ||
+    null
+  );
+}
+
+function getSubscriptionId(body) {
+  return (
+    body?.subscription_id ||
+    body?.subscriptionId ||
+    body?.Subscription?.subscription_id ||
+    null
+  );
+}
+
+function isActiveEvent(eventType, body) {
+  const activeEvents = new Set([
+    "compra_aprovada",
+    "order_approved",
+    "compra_approved",
+    "subscription_renewed",
+    "subscription_renew",
+    "subscription_created",
+  ]);
+
+  if (activeEvents.has(eventType)) {
+    return true;
+  }
+
+  // Algumas notificações de aprovação também carregam
+  // order_status = paid.
+  if (
+    body?.order_status === "paid" &&
+    (
+      eventType === "" ||
+      eventType === "order_approved" ||
+      eventType === "compra_aprovada"
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isInactiveEvent(eventType) {
+  const inactiveEvents = new Set([
+    "compra_reembolsada",
+    "order_refunded",
+    "compra_refund",
+    "refund",
+    "chargeback",
+    "subscription_canceled",
+    "subscription_cancelled",
+    "subscription_late",
+    "subscription_expired",
+  ]);
+
+  return inactiveEvents.has(eventType);
+}
 
 async function supabaseRequest(path, options = {}) {
-  if (!SUPABASE_URL) {
-    throw new Error("SUPABASE_URL não configurada.");
-  }
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
 
-  if (!SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY não configurada."
-    );
-  }
-
-  const result = await fetch(
-    `${SUPABASE_URL}/rest/v1/${path}`,
-    {
-      ...options,
-
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-
-        Authorization:
-          `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-
-        "Content-Type":
-          "application/json",
-
-        ...(options.headers || {})
-      }
-    }
-  );
-
-  const text = await result.text();
+  const text = await response.text();
 
   let data = null;
 
@@ -74,523 +231,217 @@ async function supabaseRequest(path, options = {}) {
     data = text;
   }
 
-  if (!result.ok) {
+  if (!response.ok) {
+    console.error("Erro Supabase:", response.status, data);
     throw new Error(
-      `Supabase ${result.status}: ${JSON.stringify(data)}`
+      `Supabase respondeu ${response.status}: ${JSON.stringify(data)}`
     );
   }
 
   return data;
 }
 
-
-// ============================================================
-// VALIDAR TOKEN DA KIWIFY
-// ============================================================
-//
-// O token configurado no painel da Kiwify será colocado
-// como variável secreta na Vercel.
-//
-// Dependendo do formato enviado pela Kiwify, tentamos
-// encontrar o token nos headers.
-// ============================================================
-
-function validateKiwifyToken(req, body) {
-  if (!KIWIFY_WEBHOOK_TOKEN) {
-    return false;
-  }
-
-  const headers = req.headers || {};
-
-  const receivedToken =
-    headers["x-kiwify-token"] ||
-    headers["x-webhook-token"] ||
-    headers["authorization"]?.replace(/^Bearer\s+/i, "") ||
-    body?.token ||
-    null;
-
-  if (!receivedToken) {
-    return false;
-  }
-
-  return String(receivedToken).trim() ===
-    String(KIWIFY_WEBHOOK_TOKEN).trim();
-}
-
-
-// ============================================================
-// PEGAR EVENTO
-// ============================================================
-
-function getEvent(body) {
-  return (
-    body.webhook_event_type ||
-    body.event_type ||
-    body.event ||
-    null
-  );
-}
-
-
-// ============================================================
-// PEGAR CLIENTE
-// ============================================================
-
-function getCustomer(body) {
-  return (
-    body.Customer ||
-    body.customer ||
-    {}
-  );
-}
-
-
-// ============================================================
-// PEGAR PRODUTO
-// ============================================================
-
-function getProduct(body) {
-  return (
-    body.Product ||
-    body.product ||
-    {}
-  );
-}
-
-
-// ============================================================
-// PEGAR E-MAIL
-// ============================================================
-
-function getEmail(body) {
-  const customer =
-    getCustomer(body);
-
-  return normalizeEmail(
-    customer.email ||
-    body.customer_email ||
-    body.email ||
-    null
-  );
-}
-
-
-// ============================================================
-// PEGAR NOME
-// ============================================================
-
-function getCustomerName(body) {
-  const customer =
-    getCustomer(body);
-
-  return (
-    customer.full_name ||
-    customer.name ||
-    body.customer_name ||
-    null
-  );
-}
-
-
-// ============================================================
-// PEGAR PRODUTO
-// ============================================================
-
-function getProductId(body) {
-  const product =
-    getProduct(body);
-
-  return (
-    product.product_id ||
-    product.id ||
-    body.product_id ||
-    null
-  );
-}
-
-
-function getProductName(body) {
-  const product =
-    getProduct(body);
-
-  return (
-    product.product_name ||
-    product.name ||
-    body.product_name ||
-    null
-  );
-}
-
-
-// ============================================================
-// PEGAR ASSINATURA
-// ============================================================
-
-function getSubscriptionId(body) {
-  return (
-    body.subscription_id ||
-    body.Subscription?.subscription_id ||
-    body.subscription?.subscription_id ||
-    null
-  );
-}
-
-
-// ============================================================
-// SALVAR / ATUALIZAR ASSINATURA
-// ============================================================
-
-async function saveSubscription(data) {
-
-  const {
-    email,
-    customerName,
-    productId,
-    productName,
-    orderId,
-    subscriptionId,
-    event
-  } = data;
-
-
-  // ==========================================================
-  // EVENTOS QUE LIBERAM / MANTÊM ACESSO
-  // ==========================================================
-
-  const activeEvents = [
-    "compra_aprovada",
-    "subscription_renewed",
-    "order_approved"
-  ];
-
-
-  // ==========================================================
-  // EVENTOS QUE BLOQUEIAM ACESSO
-  // ==========================================================
-
-  const inactiveEvents = [
-    "compra_reembolsada",
-    "chargeback",
-    "subscription_canceled",
-    "subscription_late"
-  ];
-
-
-  let status = null;
-
-
-  if (activeEvents.includes(event)) {
-    status = "active";
-  }
-
-
-  if (inactiveEvents.includes(event)) {
-    status = "inactive";
-  }
-
-
-  // Eventos que não alteram acesso.
-  if (!status) {
-    return {
-      changed: false,
-      status: "ignored"
-    };
-  }
-
-
-  // ==========================================================
-  // PROCURAR ASSINATURA PELO E-MAIL
-  // ==========================================================
-
-  const existing =
-    await supabaseRequest(
-      `subscriptions?email=eq.${encodeURIComponent(email)}&select=id`,
-      {
-        method: "GET"
-      }
-    );
-
-
-  const record = {
-    email,
-    customer_name: customerName,
-
-    product_id: productId,
-    product_name: productName,
-
-    order_id: orderId,
-    subscription_id: subscriptionId,
-
-    status,
-    last_event: event,
-
-    updated_at:
-      new Date().toISOString()
-  };
-
-
-  // ==========================================================
-  // ATUALIZAR
-  // ==========================================================
-
-  if (existing && existing.length > 0) {
-
-    await supabaseRequest(
-      `subscriptions?id=eq.${encodeURIComponent(
-        existing[0].id
-      )}`,
-      {
-        method: "PATCH",
-
-        headers: {
-          Prefer: "return=minimal"
-        },
-
-        body: JSON.stringify(record)
-      }
-    );
-
-    return {
-      changed: true,
-      status,
-      action: "updated"
-    };
-  }
-
-
-  // ==========================================================
-  // CRIAR
-  // ==========================================================
-
-  await supabaseRequest(
-    "subscriptions",
+async function findSubscriptionByEmail(email) {
+  const encodedEmail = encodeURIComponent(email);
+
+  return supabaseRequest(
+    `subscriptions?select=*&email=eq.${encodedEmail}&limit=1`,
     {
-      method: "POST",
-
-      headers: {
-        Prefer: "return=minimal"
-      },
-
-      body: JSON.stringify({
-        ...record,
-
-        created_at:
-          new Date().toISOString()
-      })
+      method: "GET",
     }
   );
-
-
-  return {
-    changed: true,
-    status,
-    action: "created"
-  };
 }
 
+async function createSubscription(record) {
+  return supabaseRequest("subscriptions", {
+    method: "POST",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(record),
+  });
+}
 
-// ============================================================
-// VERCEL HANDLER
-// ============================================================
+async function updateSubscription(id, record) {
+  return supabaseRequest(
+    `subscriptions?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(record),
+    }
+  );
+}
 
 module.exports = async function handler(req, res) {
-
-  // ----------------------------------------------------------
-  // SOMENTE POST
-  // ----------------------------------------------------------
-
+  // Kiwify envia POST.
   if (req.method !== "POST") {
-    return response(res, 405, {
+    return send(res, 405, {
       ok: false,
-      error: "Método não permitido."
+      error: "Método não permitido.",
     });
   }
 
+  // Verificação básica das configurações.
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error(
+      "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados."
+    );
+
+    return send(res, 500, {
+      ok: false,
+      error: "Configuração do Supabase ausente.",
+    });
+  }
 
   try {
-
-    // --------------------------------------------------------
-    // BODY
-    // --------------------------------------------------------
-
+    /*
+     * Precisamos do corpo original para validar assinatura HMAC.
+     * O Vercel normalmente disponibiliza req.body já parseado.
+     * Quando isso acontece, reconstruímos o JSON de forma consistente.
+     */
     let body = req.body;
 
-
-    if (!body) {
-      return response(res, 400, {
-        ok: false,
-        error: "Body vazio."
-      });
-    }
-
-
     if (typeof body === "string") {
-
       try {
         body = JSON.parse(body);
       } catch {
-        return response(res, 400, {
+        return send(res, 400, {
           ok: false,
-          error: "JSON inválido."
+          error: "JSON inválido.",
         });
       }
-
     }
 
-
-    // --------------------------------------------------------
-    // TOKEN
-    // --------------------------------------------------------
-
-    if (!validateKiwifyToken(req, body)) {
-
-      console.error(
-        "Webhook Kiwify rejeitado: token inválido."
-      );
-
-      return response(res, 401, {
+    if (!body || typeof body !== "object") {
+      return send(res, 400, {
         ok: false,
-        error: "Não autorizado."
+        error: "Payload vazio ou inválido.",
       });
     }
 
+    const rawBody =
+      typeof req.body === "string"
+        ? req.body
+        : JSON.stringify(body);
 
-    // --------------------------------------------------------
-    // EVENTO
-    // --------------------------------------------------------
+    /*
+     * Segurança:
+     * valida o token/assinatura antes de alterar o banco.
+     */
+    const valid = validateKiwifyRequest(req, rawBody);
 
-    const event =
-      getEvent(body);
+    if (!valid) {
+      console.error("Webhook Kiwify rejeitado: assinatura inválida.");
 
-
-    if (!event) {
-
-      return response(res, 400, {
+      return send(res, 401, {
         ok: false,
-        error: "Evento não informado."
+        error: "Webhook não autorizado.",
       });
     }
 
+    const eventType = getEventType(body);
 
-    // --------------------------------------------------------
-    // DADOS
-    // --------------------------------------------------------
-
-    const email =
-      getEmail(body);
-
-    const customerName =
-      getCustomerName(body);
-
-    const productId =
-      getProductId(body);
-
-    const productName =
-      getProductName(body);
-
-    const orderId =
-      body.order_id ||
-      body.order_ref ||
-      null;
-
-    const subscriptionId =
-      getSubscriptionId(body);
-
-
-    // --------------------------------------------------------
-    // LOG
-    // --------------------------------------------------------
-
-    console.log(
-      "Kiwify webhook recebido:",
-      {
-        event,
-        orderId,
-        productId,
-        hasEmail: Boolean(email),
-        hasSubscription:
-          Boolean(subscriptionId)
-      }
-    );
-
-
-    // --------------------------------------------------------
-    // E-MAIL É O VÍNCULO DO CLIENTE
-    // --------------------------------------------------------
+    const email = getEmail(body);
+    const customerName = getCustomerName(body);
+    const productId = getProductId(body);
+    const productName = getProductName(body);
+    const orderId = getOrderId(body);
+    const subscriptionId = getSubscriptionId(body);
 
     if (!email) {
+      console.error("Webhook sem email do cliente.", {
+        eventType,
+        orderId,
+      });
 
-      console.error(
-        "Webhook sem e-mail do comprador."
-      );
-
-      return response(res, 400, {
+      return send(res, 400, {
         ok: false,
-        error:
-          "E-mail do comprador não encontrado."
+        error: "Email do cliente não encontrado.",
       });
     }
 
+    let status = null;
 
-    // --------------------------------------------------------
-    // SALVAR NO SUPABASE
-    // --------------------------------------------------------
+    if (isActiveEvent(eventType, body)) {
+      status = "active";
+    } else if (isInactiveEvent(eventType)) {
+      status = "inactive";
+    }
 
-    const result =
-      await saveSubscription({
+    /*
+     * Eventos que não alteram o acesso:
+     * boleto_gerado, pix_gerado, carrinho_abandonado,
+     * compra_recusada etc.
+     */
+    if (!status) {
+      console.log("Evento recebido sem alteração de acesso:", eventType);
 
+      return send(res, 200, {
+        ok: true,
+        ignored: true,
+        event: eventType || null,
+      });
+    }
+
+    const existing = await findSubscriptionByEmail(email);
+
+    const record = {
+      email,
+      customer_name: customerName,
+      product_id: productId,
+      product_name: productName,
+      order_id: orderId,
+      subscription_id: subscriptionId,
+      status,
+      last_event: eventType || "unknown",
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing && existing.length > 0) {
+      await updateSubscription(existing[0].id, record);
+
+      console.log("Assinatura atualizada:", {
         email,
-
-        customerName,
-
-        productId,
-
-        productName,
-
-        orderId,
-
-        subscriptionId,
-
-        event
-
+        status,
+        eventType,
       });
 
+      return send(res, 200, {
+        ok: true,
+        action: "updated",
+        email,
+        status,
+        event: eventType,
+      });
+    }
 
-    // --------------------------------------------------------
-    // SUCESSO
-    // --------------------------------------------------------
-
-    return response(res, 200, {
-
-      ok: true,
-
-      received: true,
-
-      event,
-
-      access:
-        result.status,
-
-      action:
-        result.action || null
-
+    await createSubscription({
+      ...record,
+      created_at: new Date().toISOString(),
     });
 
+    console.log("Assinatura criada:", {
+      email,
+      status,
+      eventType,
+    });
 
+    return send(res, 200, {
+      ok: true,
+      action: "created",
+      email,
+      status,
+      event: eventType,
+    });
   } catch (error) {
+    console.error("Erro no webhook Kiwify:", error);
 
-    console.error(
-      "Erro no webhook Kiwify:",
-      error
-    );
-
-    return response(res, 500, {
-
+    return send(res, 500, {
       ok: false,
-
-      error:
-        "Erro interno ao processar webhook."
-
+      error: "Erro interno ao processar webhook.",
     });
   }
 };
