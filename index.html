@@ -363,7 +363,28 @@ document.getElementById('cancelEdit').onclick=()=>{
 
   show('dashboard');
 };
-async function del(id){if(!confirm('Excluir este lançamento?'))return;const {error}=await sb.from('lancamentos').delete().eq('id',id);if(error){alert(error.message);return}await loadTx()}
+async function del(id){
+  if(!currentUser){
+    alert('Sua sessão expirou. Entre novamente para continuar.');
+    await logout();
+    return;
+  }
+
+  if(!confirm('Excluir este lançamento?')) return;
+
+  const {error}=await sb
+    .from('lancamentos')
+    .delete()
+    .eq('id',id)
+    .eq('user_id',currentUser.id);
+
+  if(error){
+    alert(error.message||'Não foi possível excluir o lançamento.');
+    return;
+  }
+
+  await loadTx();
+}
 async function clearAll(){if(!tx.length)return;if(!confirm('Apagar todos os seus lançamentos?'))return;const {error}=await sb.from('lancamentos').delete().eq('user_id',currentUser.id);if(error){alert(error.message);return}await loadTx()}
 document.getElementById('form').onsubmit=async e=>{
   e.preventDefault();
